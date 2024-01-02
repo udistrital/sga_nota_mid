@@ -1,0 +1,288 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "beego Test API",
+        "description": "beego has a very cool tools to autogenerate documents for your API",
+        "version": "1.0.0",
+        "termsOfService": "http://beego.me/",
+        "contact": {
+            "email": "astaxie@gmail.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
+    },
+    "basePath": "/v1",
+    "paths": {
+        "/notas/CapturaNotas": {
+            "put": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Modificar registro de notas para estudiantes de determinada asignatura",
+                "operationId": "NotasController.PutCapturaNotas",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body Notas Estudiantes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "400": {
+                        "description": "the request contains incorrect syntax"
+                    }
+                }
+            }
+        },
+        "/notas/CapturaNotas/{id_asignatura}/{id_periodo}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Obtener lista de estudiantes con los registros de notas para determinada asignatura",
+                "operationId": "NotasController.GetCapturaNotas",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "id_periodo",
+                        "description": "Id periodo",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/EspaciosAcademicos/{id_docente}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Listar la carga academica relacionada a determinado docente",
+                "operationId": "NotasController.GetEspaciosAcademicosDocente",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_docente",
+                        "description": "Id docente",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/EstadosRegistros/{id_periodo}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Listar asignaturas docentes  junto estado registro",
+                "operationId": "NotasController.GetEstadosRegistros",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_periodo",
+                        "description": "Id periodo",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/InfoDocenteAsignatura/{id_asignatura}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Obtener la informacion de docente y asingnatura solicitada",
+                "operationId": "NotasController.GetDatosDocenteAsignatura",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/InfoEstudianteNotas/{id_estudiante}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Obtener la informacion de estudiante y notas asignaturas",
+                "operationId": "NotasController.GetDatosEstudianteNotas",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_estudiante",
+                        "description": "Id estudiante",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/ModificacionExtemporanea/{id_asignatura}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Chequear si hay modificacion extemporanea para la asignatura",
+                "operationId": "NotasController.GetModificacionExtemporanea",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/PorcentajeAsignatura": {
+            "put": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Modificar los porcentajes de la asignatura solicitada",
+                "operationId": "NotasController.PutPorcentajesAsignatura",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body Modificar registro Asignatura content",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "400": {
+                        "description": "the request contains incorrect syntax"
+                    }
+                }
+            }
+        },
+        "/notas/PorcentajeAsignatura/{id_asignatura}/{id_periodo}": {
+            "get": {
+                "tags": [
+                    "notas"
+                ],
+                "description": "Obtener los porcentajes de la asignatura solicitada",
+                "operationId": "NotasController.GetPorcentajesAsignatura",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "id_periodo",
+                        "description": "Id periodo",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "{}": {
+            "title": "{}",
+            "type": "object"
+        }
+    },
+    "tags": [
+        {
+            "name": "notas",
+            "description": "NotasController operations for Notas\n"
+        }
+    ]
+}
