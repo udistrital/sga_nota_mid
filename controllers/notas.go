@@ -3,12 +3,13 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 	"math"
 	"reflect"
-	request "sga_mid_notas/models"
 	"strconv"
+
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+	request "github.com/udistrital/sga_mid_notas/models"
 )
 
 // NotasController operations for Notas
