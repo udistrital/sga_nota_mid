@@ -7,7 +7,7 @@ import (
 	"github.com/astaxie/beego/logs"
 	"math"
 	"reflect"
-	request "sga_mid_notas/models"
+	request "github.com/udistrital/sga_mid_notas/models"
 	"strconv"
 )
 
@@ -35,7 +35,7 @@ func (c *NotasController) URLMapping() {
 // @Param	id_docente		path 	int	true		"Id docente"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /EspaciosAcademicos/:id_docente [get]
+// @router /docentes/:id_docente/espacios-academicos [get]
 func (c *NotasController) GetEspaciosAcademicosDocente() {
 	id_docente := c.Ctx.Input.Param(":id_docente")
 
@@ -119,7 +119,7 @@ func (c *NotasController) GetEspaciosAcademicosDocente() {
 // @Param	id_asignatura		path 	string	true		"Id asignatura"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /ModificacionExtemporanea/:id_asignatura [get]
+// @router /asignaturas/:id_asignatura/modificacion-extemporanea [get]
 func (c *NotasController) GetModificacionExtemporanea() {
 	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
 
@@ -146,7 +146,7 @@ func (c *NotasController) GetModificacionExtemporanea() {
 // @Param	id_asignatura		path 	string	true		"Id asignatura"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /InfoDocenteAsignatura/:id_asignatura [get]
+// @router /asignaturas/:id_asignatura/info-docente [get]
 func (c *NotasController) GetDatosDocenteAsignatura() {
 	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
 
@@ -223,7 +223,7 @@ func (c *NotasController) GetDatosDocenteAsignatura() {
 // @Param	id_periodo		path 	int	true		"Id periodo"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /PorcentajeAsignatura/:id_asignatura/:id_periodo [get]
+// @router /asignaturas/:id_asignatura/periodos/:id_periodo/porcentajes [get]
 func (c *NotasController) GetPorcentajesAsignatura() {
 	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
 	id_periodo := c.Ctx.Input.Param(":id_periodo")
@@ -306,7 +306,7 @@ func (c *NotasController) GetPorcentajesAsignatura() {
 // @Param   body        body    {}  true        "body Modificar registro Asignatura content"
 // @Success 200 {}
 // @Failure 400 the request contains incorrect syntax
-// @router /PorcentajeAsignatura [put]
+// @router /asignaturas/porcentajes [put]
 func (c *NotasController) PutPorcentajesAsignatura() {
 
 	var inputData map[string]interface{}
@@ -427,7 +427,7 @@ func (c *NotasController) PutPorcentajesAsignatura() {
 // @Param	id_periodo				path	int		true		"Id periodo"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /CapturaNotas/:id_asignatura/:id_periodo [get]
+// @router /notas/asignaturas/:id_asignatura/periodos/:id_periodo/estudiantes [get]
 func (c *NotasController) GetCapturaNotas() {
 	id_espacio_academico := c.Ctx.Input.Param(":id_asignatura")
 	id_periodo := c.Ctx.Input.Param(":id_periodo")
@@ -609,7 +609,7 @@ func (c *NotasController) GetCapturaNotas() {
 // @Param   body        body    {}  true        "body Notas Estudiantes"
 // @Success 200 {}
 // @Failure 400 the request contains incorrect syntax
-// @router /CapturaNotas [put]
+// @router /notas/asignaturas/estudiantes [put]
 func (c *NotasController) PutCapturaNotas() {
 
 	var inputData map[string]interface{}
@@ -1049,7 +1049,7 @@ func (c *NotasController) PutCapturaNotas() {
 // @Param	id_periodo		path 	int	true		"Id periodo"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /EstadosRegistros/:id_periodo [get]
+// @router /periodos/:id_periodo/estados-registros [get]
 func (c *NotasController) GetEstadosRegistros() {
 
 	id_periodo := c.Ctx.Input.Param(":id_periodo")
@@ -1174,7 +1174,7 @@ func (c *NotasController) GetEstadosRegistros() {
 // @Param	id_estudiante	path	int		true	"Id estudiante"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /InfoEstudianteNotas/:id_estudiante [get]
+// @router /notas/estudiantes/:id_estudiante [get]
 func (c *NotasController) GetDatosEstudianteNotas() {
 	id_estudiante := c.Ctx.Input.Param(":id_estudiante")
 

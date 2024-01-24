@@ -8,18 +8,16 @@
 package routers
 
 import (
-	"sga_mid_notas/controllers"
+	"github.com/udistrital/sga_mid_notas/controllers"
 
 	"github.com/astaxie/beego"
 )
 
 func init() {
-	ns := beego.NewNamespace("/v1",
-		beego.NSNamespace("/notas",
-			beego.NSInclude(
-				&controllers.NotasController{},
-			),
-		),
-	)
-	beego.AddNamespace(ns)
+    ns := beego.NewNamespace("/v1",
+        beego.NSInclude(
+            &controllers.NotasController{},
+        ),
+    )
+    beego.AddNamespace(ns)
 }
