@@ -1,172 +1,114 @@
-package controllers
+package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"math"
-	"reflect"
-	"strconv"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
-	request "github.com/udistrital/sga_mid_notas/models"
-	"github.com/udistrital/utils_oas/errorhandler"
-	"github.com/udistrital/utils_oas/requestresponse"
+	"github.com/prometheus/common/log"
+	"github.com/udistrital/sga_mid_notas/helpers"
+	"github.com/udistrital/utils_oas/request"
 )
 
-// NotasController operations for Notas
-type NotasController struct {
-	beego.Controller
-}
+func GetEspaciosAcademicosDocente(idDocente string) ([]interface{}, error) {
+	espaciosAcademicos, err := helpers.ObtenerEspaciosAcademicos(idDocente)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
-// URLMapping ...
-func (c *NotasController) URLMapping() {
-	c.Mapping("GetEspaciosAcademicosDocente", c.GetEspaciosAcademicosDocente)
-	c.Mapping("GetModificacionExtemporanea", c.GetModificacionExtemporanea)
-	c.Mapping("GetDatosDocenteAsignatura", c.GetDatosDocenteAsignatura)
-	c.Mapping("GetPorcentajesAsignatura", c.GetPorcentajesAsignatura)
-	c.Mapping("PutPorcentajesAsignatura", c.PutPorcentajesAsignatura)
-	c.Mapping("GetCapturaNotas", c.GetCapturaNotas)
-	c.Mapping("PutCapturaNotas", c.PutCapturaNotas)
-	c.Mapping("GetEstadosRegistros", c.GetEstadosRegistros)
-	c.Mapping("GetDatosEstudianteNotas", c.GetDatosEstudianteNotas)
-}
+	proyectos, err := helpers.ObtenerProyectos()
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
-// GetEspaciosAcademicosDocente ...
-// @Title GetEspaciosAcademicosDocente
-// @Description Listar la carga academica relacionada a determinado docente
-// @Param	id_docente		path 	int	true		"Id docente"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /docentes/:id_docente/espacios-academicos [get]
-func (c *NotasController) GetEspaciosAcademicosDocente() {
-	defer errorhandler.HandlePanic(&c.Controller)
+	calendarios, err := helpers.ObtenerCalendarios()
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
-	id_docente := c.Ctx.Input.Param(":id_docente")
+	periodos, err := helpers.ObtenerPeriodos()
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
-	resultados := []interface{}{}
+	var resultados []interface{}
 
-	var EspaciosAcademicosRegistros map[string]interface{}
-	var proyectos []interface{}
-	var calendarios []interface{}
-	var periodos map[string]interface{}
+	if helpers.VerificarNil(espaciosAcademicos["Data"]) {
+		return nil, errors.New("error en espaciosAcademicos: la clave 'Data' está vacía o no existe")
+	}
 
-	errEspaciosAcademicosRegistros := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico?query=activo:true,docente_id:"+fmt.Sprintf("%v", id_docente), &EspaciosAcademicosRegistros)
-	if errEspaciosAcademicosRegistros == nil && fmt.Sprintf("%v", EspaciosAcademicosRegistros["Status"]) == "200" {
+	if helpers.VerificarNil(calendarios) {
+		return nil, errors.New("error en calendarios: está vacía o no existe")
+	}
 
-		errProyectos := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true&fields=Id,Nombre,NivelFormacionId&limit=0", &proyectos)
-		if errProyectos == nil && fmt.Sprintf("%v", proyectos[0]) != "map[]" {
+	if helpers.VerificarNil(proyectos) {
+		return nil, errors.New("error en proyectos: está vacía o no existe")
+	}
 
-			errCalendario := request.GetJson("http://"+beego.AppConfig.String("EventoService")+"calendario?query=Activo:true&fields=Id,Nombre,PeriodoId&limit=0", &calendarios)
-			if errCalendario == nil && fmt.Sprintf("%v", calendarios[0]) != "map[]" {
+	if helpers.VerificarNil(periodos["Data"]) {
+		return nil, errors.New("error en periodos: la clave ['data'] está vacía o no existe")
+	}
 
-				errPeriodos := request.GetJson("http://"+beego.AppConfig.String("ParametroService")+"periodo?query=Activo:true&fields=Id,Nombre&limit=0", &periodos)
-				if errPeriodos == nil && fmt.Sprintf("%v", periodos["Status"]) == "200" && fmt.Sprintf("%v", periodos["Data"]) != "[map[]]" {
+	for _, espacioAcademicoRegistro := range espaciosAcademicos["Data"].([]interface{}) {
+		registro := espacioAcademicoRegistro.(map[string]interface{})
 
-					for _, espacioAcademicoRegistro := range EspaciosAcademicosRegistros["Data"].([]interface{}) {
-
-						calendario := findIdsbyId(calendarios, fmt.Sprintf("%v", espacioAcademicoRegistro.(map[string]interface{})["periodo_id"]))
-						if fmt.Sprintf("%v", calendario) != "map[]" {
-
-							proyecto := findIdsbyId(proyectos, fmt.Sprintf("%v", espacioAcademicoRegistro.(map[string]interface{})["proyecto_academico_id"]))
-							if fmt.Sprintf("%v", proyecto) != "map[]" {
-
-								resultados = append(resultados, map[string]interface{}{
-									"Nivel":              proyecto["NivelFormacionId"].(map[string]interface{})["Nombre"],
-									"Nivel_id":           proyecto["NivelFormacionId"].(map[string]interface{})["Id"],
-									"Codigo":             espacioAcademicoRegistro.(map[string]interface{})["codigo"],
-									"Asignatura":         espacioAcademicoRegistro.(map[string]interface{})["nombre"],
-									"Periodo":            findNamebyId(periodos["Data"].([]interface{}), fmt.Sprintf("%v", calendario["PeriodoId"])),
-									"PeriodoId":          espacioAcademicoRegistro.(map[string]interface{})["periodo_id"],
-									"Grupo":              espacioAcademicoRegistro.(map[string]interface{})["grupo"],
-									"Inscritos":          espacioAcademicoRegistro.(map[string]interface{})["inscritos"],
-									"Proyecto_Academico": proyecto["Nombre"],
-									"AsignaturaId":       espacioAcademicoRegistro.(map[string]interface{})["_id"],
-								})
-							}
-						}
-					}
-
-					if fmt.Sprintf("%v", resultados) != "[]" {
-						c.Ctx.Output.SetStatus(200)
-						c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
-					} else {
-						c.Ctx.Output.SetStatus(404)
-						c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
-					}
-				} else {
-					logs.Error(errPeriodos)
-					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
-				}
-			} else {
-				logs.Error(errCalendario)
-				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
-			}
-		} else {
-			logs.Error(errProyectos)
-			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+		calendario := helpers.FindIdsbyId(calendarios, fmt.Sprintf("%v", registro["periodo_id"]))
+		if len(calendario) == 0 {
+			continue
 		}
-	} else {
-		logs.Error(errEspaciosAcademicosRegistros)
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+
+		proyecto := helpers.FindIdsbyId(proyectos, fmt.Sprintf("%v", registro["proyecto_academico_id"]))
+		if len(proyecto) == 0 {
+			continue
+		}
+
+		periodoNombre := helpers.FindNamebyId(periodos["Data"].([]interface{}), fmt.Sprintf("%v", calendario["PeriodoId"]))
+
+		resultado := map[string]interface{}{
+			"Nivel":              proyecto["NivelFormacionId"].(map[string]interface{})["Nombre"],
+			"Nivel_id":           proyecto["NivelFormacionId"].(map[string]interface{})["Id"],
+			"Codigo":             registro["codigo"],
+			"Asignatura":         registro["nombre"],
+			"Periodo":            periodoNombre,
+			"PeriodoId":          registro["periodo_id"],
+			"Grupo":              registro["grupo"],
+			"Inscritos":          registro["inscritos"],
+			"Proyecto_Academico": proyecto["Nombre"],
+			"AsignaturaId":       registro["_id"],
+		}
+
+		resultados = append(resultados, resultado)
 	}
 
-	c.ServeJSON()
+	if len(resultados) == 0 {
+		return nil, errors.New("no se encontraron datos")
+	}
+
+	return resultados, nil
 }
 
-// GetModificacionExtemporanea ...
-// @Title GetModificacionExtemporanea
-// @Description Chequear si hay modificacion extemporanea para la asignatura
-// @Param	id_asignatura		path 	string	true		"Id asignatura"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /asignaturas/:id_asignatura/modificacion-extemporanea [get]
-func (c *NotasController) GetModificacionExtemporanea() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
-
+func GetModificacionExtemporanea(idAsignatura string) (map[string]interface{}, error) {
 	var RegistroAsignatura map[string]interface{}
-	errRegistroAsignatura := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,espacio_academico_id:"+fmt.Sprintf("%v", id_asignatura)+"&fields=estado_registro_id,modificacion_extemporanea&limit=0", &RegistroAsignatura)
-	if errRegistroAsignatura == nil && fmt.Sprintf("%v", RegistroAsignatura["Status"]) == "200" {
-
-		c.Ctx.Output.SetStatus(200)
-		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, RegistroAsignatura["Data"])
-	} else {
-		logs.Error(errRegistroAsignatura)
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
-	}
-
-	c.ServeJSON()
-
+	url := fmt.Sprintf("http://%sregistro?query=activo:true,espacio_academico_id:%v&fields=estado_registro_id,modificacion_extemporanea&limit=0", beego.AppConfig.String("CalificacionesService"), idAsignatura)
+	err := request.GetJson(url, &RegistroAsignatura)
+	return RegistroAsignatura, err
 }
 
-// GetDatosDocenteAsignatura ...
-// @Title GetDatosDocenteAsignatura
-// @Description Obtener la informacion de docente y asingnatura solicitada
-// @Param	id_asignatura		path 	string	true		"Id asignatura"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /asignaturas/:id_asignatura/info-docente [get]
-func (c *NotasController) GetDatosDocenteAsignatura() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
-
+func GetDatosDocenteAsignatura(idAsignatura string) ([]interface{}, error) {
 	resultado := []interface{}{}
-
 	var EspacioAcademicoRegistro map[string]interface{}
 	var DocenteInfo []map[string]interface{}
 	var proyecto []interface{}
 	var calendario []interface{}
 	var periodo map[string]interface{}
 
-	errEspacioAcademicoRegistro := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico/"+fmt.Sprintf("%v", id_asignatura), &EspacioAcademicoRegistro)
+	errEspacioAcademicoRegistro := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico/"+fmt.Sprintf("%v", idAsignatura), &EspacioAcademicoRegistro)
 	if errEspacioAcademicoRegistro == nil && fmt.Sprintf("%v", EspacioAcademicoRegistro["Status"]) == "200" {
 
 		errDocenteInfo := request.GetJson("http://"+beego.AppConfig.String("TercerosService")+"datos_identificacion?query=Activo:true,TerceroId:"+fmt.Sprintf("%v", EspacioAcademicoRegistro["Data"].(map[string]interface{})["docente_id"])+"&sortby=Id&order=desc&limit=1", &DocenteInfo)
@@ -192,57 +134,37 @@ func (c *NotasController) GetDatosDocenteAsignatura() {
 							"Creditos":       EspacioAcademicoRegistro["Data"].(map[string]interface{})["creditos"],
 							"Periodo":        periodo["Data"].(map[string]interface{})["Nombre"],
 						})
-						c.Ctx.Output.SetStatus(200)
-						c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
+						return resultado, nil
 					} else {
-						logs.Error(errPeriodo)
-						c.Ctx.Output.SetStatus(404)
-						c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+						log.Error(errPeriodo)
+						return nil, errors.New("error en GetDatosDocenteAsignatura: periodo está vacía o no existe")
 					}
 				} else {
 					logs.Error(errCalendario)
-					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+					return nil, errors.New("error en GetDatosDocenteAsignatura: calendario está vacía o no existe")
 				}
 			} else {
 				logs.Error(errProyecto)
-				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+				return nil, errors.New("error en GetDatosDocenteAsignatura: proyecto está vacía o no existe")
 			}
 		} else {
 			logs.Error(errDocenteInfo)
-			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+			return nil, errors.New("error en GetDatosDocenteAsignatura: docente está vacía o no existe")
 		}
 	} else {
 		logs.Error(errEspacioAcademicoRegistro)
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+		return nil, errors.New("error en GetDatosDocenteAsignatura: espacioAcademicoRegistro está vacía o no existe")
 	}
-
-	c.ServeJSON()
 }
 
-// GetPorcentajesAsignatura ...
-// @Title GetPorcentajesAsignatura
-// @Description Obtener los porcentajes de la asignatura solicitada
-// @Param	id_asignatura		path 	string	true		"Id asignatura"
-// @Param	id_periodo		path 	int	true		"Id periodo"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /asignaturas/:id_asignatura/periodos/:id_periodo/porcentajes [get]
-func (c *NotasController) GetPorcentajesAsignatura() {
-	defer errorhandler.HandlePanic(&c.Controller)
+func GetPorcentajesAsignatura(idAsignatura string, idPeriodo string) ([]interface{}, error) {
 
-	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
-	id_periodo := c.Ctx.Input.Param(":id_periodo")
-
-	if InfoPorcentajes, ok := EstadosRegistroIDs(); ok {
+	if InfoPorcentajes, ok := helpers.EstadosRegistroIDs(); ok {
 
 		resultados := []interface{}{}
 
 		var RegistroAsignatura map[string]interface{}
-		errRegistroAsignatura := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,espacio_academico_id:"+fmt.Sprintf("%v", id_asignatura)+",periodo_id:"+fmt.Sprintf("%v", id_periodo), &RegistroAsignatura)
+		errRegistroAsignatura := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,espacio_academico_id:"+fmt.Sprintf("%v", idAsignatura)+",periodo_id:"+fmt.Sprintf("%v", idPeriodo), &RegistroAsignatura)
 		if errRegistroAsignatura == nil {
 
 			if fmt.Sprintf("%v", RegistroAsignatura["Status"]) == "200" {
@@ -278,52 +200,38 @@ func (c *NotasController) GetPorcentajesAsignatura() {
 			}
 
 			if !InfoPorcentajes.Corte1.Existe {
-				resultados = append(resultados, passPorcentajeEmpty(InfoPorcentajes.Corte1.IdEstado))
+				resultados = append(resultados, helpers.PassPorcentajeEmpty(InfoPorcentajes.Corte1.IdEstado))
 			}
 			if !InfoPorcentajes.Corte2.Existe {
-				resultados = append(resultados, passPorcentajeEmpty(InfoPorcentajes.Corte2.IdEstado))
+				resultados = append(resultados, helpers.PassPorcentajeEmpty(InfoPorcentajes.Corte2.IdEstado))
 			}
 			if !InfoPorcentajes.Examen.Existe {
-				resultados = append(resultados, passPorcentajeEmpty(InfoPorcentajes.Examen.IdEstado))
+				resultados = append(resultados, helpers.PassPorcentajeEmpty(InfoPorcentajes.Examen.IdEstado))
 			}
 			if !InfoPorcentajes.Habilit.Existe {
-				resultados = append(resultados, passPorcentajeEmpty(InfoPorcentajes.Habilit.IdEstado))
+				resultados = append(resultados, helpers.PassPorcentajeEmpty(InfoPorcentajes.Habilit.IdEstado))
 			}
 			if !InfoPorcentajes.Definitiva.Existe {
-				resultados = append(resultados, passPorcentajeEmpty(InfoPorcentajes.Definitiva.IdEstado))
+				resultados = append(resultados, helpers.PassPorcentajeEmpty(InfoPorcentajes.Definitiva.IdEstado))
 			}
 
-			c.Ctx.Output.SetStatus(200)
-			c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
+			return resultados, nil
 
 		} else {
 			logs.Error(errRegistroAsignatura)
-			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+			return nil, errors.New("error en GetPorcentajesAsignatura: registroAsignatura está vacía o no existe")
 		}
 	} else {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
+		return nil, errors.New("error en GetPorcentajesAsignatura: EstadoDeRegistro está vacía o no existe")
 	}
-
-	c.ServeJSON()
 }
 
-// PutPorcentajesAsignatura ...
-// @Title PutPorcentajesAsignatura
-// @Description Modificar los porcentajes de la asignatura solicitada
-// @Param   body        body    {}  true        "body Modificar registro Asignatura content"
-// @Success 200 {}
-// @Failure 400 the request contains incorrect syntax
-// @router /asignaturas/porcentajes [put]
-func (c *NotasController) PutPorcentajesAsignatura() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
+func PutPorcentajeAsignatura(data []byte) (interface{}, error) {
 	var inputData map[string]interface{}
 
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &inputData); err == nil {
+	if err := json.Unmarshal(data, &inputData); err == nil {
 
-		valido := validatePutPorcentajes(inputData)
+		valido := helpers.ValidatePutPorcentajes(inputData)
 
 		crearRegistros := fmt.Sprintf("%v", inputData["Accion"]) == "Crear"
 		guardarRegistros := fmt.Sprintf("%v", inputData["Accion"]) == "Guardar"
@@ -399,51 +307,29 @@ func (c *NotasController) PutPorcentajesAsignatura() {
 							logs.Error(errPorcentajeAsignaturaDel)
 						}
 					}
-					c.Ctx.Output.SetStatus(400)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil)
+					return nil, errors.New("error en PutPorcentajesAsignatura: crearSalioMal")
 				} else {
-					c.Ctx.Output.SetStatus(200)
-					c.Data["json"] = requestresponse.APIResponseDTO(true, 200, crearRegistrosReporte)
+					return crearRegistrosReporte, nil
 				}
 			} else if guardarRegistros {
 				if guardarSalioMal {
-					c.Ctx.Output.SetStatus(400)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
+					return nil, errors.New("error en PutPorcentajesAsignatura: guardarSalioMal")
 				} else {
-					c.Ctx.Output.SetStatus(200)
-					c.Data["json"] = requestresponse.APIResponseDTO(true, 200, guardarRegistroReporte)
+					return guardarRegistroReporte, nil
 				}
 			} else {
-				c.Ctx.Output.SetStatus(400)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
+				return nil, errors.New("error en PutPorcentajesAsignatura: guardarSalioMal")
 			}
 		} else {
-			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
+			return nil, errors.New("error en PutPorcentajesAsignatura: No es valido")
 		}
 	} else {
 		logs.Error(err)
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
+		return nil, errors.New(err.Error())
 	}
-
-	c.ServeJSON()
 }
 
-// GetCapturaNotas ...
-// @Title GetCapturaNotas
-// @Description Obtener lista de estudiantes con los registros de notas para determinada asignatura
-// @Param	id_asignatura	path	string	true		"Id asignatura"
-// @Param	id_periodo				path	int		true		"Id periodo"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /notas/asignaturas/:id_asignatura/periodos/:id_periodo/estudiantes [get]
-func (c *NotasController) GetCapturaNotas() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	id_espacio_academico := c.Ctx.Input.Param(":id_asignatura")
-	id_periodo := c.Ctx.Input.Param(":id_periodo")
-
+func GetCapturaNotas(idEspacioAcademico string, idPeriodo string) (interface{}, error) {
 	var resultado map[string]interface{}
 	datos := []interface{}{}
 
@@ -451,9 +337,9 @@ func (c *NotasController) GetCapturaNotas() {
 	var RegistroCalificacion map[string]interface{}
 	var EstudianteInformacion []interface{}
 
-	if InformacionCalificaciones, ok := EstadosRegistroIDs(); ok {
+	if InformacionCalificaciones, ok := helpers.EstadosRegistroIDs(); ok {
 
-		errRegistroCalificacion := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,periodo_id:"+fmt.Sprintf("%v", id_periodo)+",espacio_academico_id:"+fmt.Sprintf("%v", id_espacio_academico), &RegistroCalificacion)
+		errRegistroCalificacion := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,periodo_id:"+fmt.Sprintf("%v", idPeriodo)+",espacio_academico_id:"+fmt.Sprintf("%v", idEspacioAcademico), &RegistroCalificacion)
 		if errRegistroCalificacion == nil && fmt.Sprintf("%v", RegistroCalificacion["Status"]) == "200" {
 			for _, EstadosRegistro := range RegistroCalificacion["Data"].([]interface{}) {
 				if fmt.Sprintf("%v", EstadosRegistro.(map[string]interface{})["estado_registro_id"]) == InformacionCalificaciones.Corte1.IdEstado {
@@ -483,7 +369,7 @@ func (c *NotasController) GetCapturaNotas() {
 				}
 			}
 
-			errEspaciosAcademicosEstudiantes := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico-estudiantes?query=activo:true,espacio_academico_id:"+fmt.Sprintf("%v", id_espacio_academico)+",periodo_id:"+fmt.Sprintf("%v", id_periodo), &EspaciosAcademicosEstudiantes)
+			errEspaciosAcademicosEstudiantes := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico-estudiantes?query=activo:true,espacio_academico_id:"+fmt.Sprintf("%v", idEspacioAcademico)+",periodo_id:"+fmt.Sprintf("%v", idPeriodo), &EspaciosAcademicosEstudiantes)
 			if errEspaciosAcademicosEstudiantes == nil && fmt.Sprintf("%v", EspaciosAcademicosEstudiantes["Status"]) == "200" {
 
 				for _, espaciosAcademicoEstudiante := range EspaciosAcademicosEstudiantes["Data"].([]interface{}) {
@@ -503,60 +389,60 @@ func (c *NotasController) GetCapturaNotas() {
 							var InfoNota map[string]interface{}
 							errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,registro_id:"+InformacionCalificaciones.Corte1.IdRegistroNota+",estudiante_id:"+fmt.Sprintf("%v", id_estudiante), &InfoNota)
 							if errInfoNota == nil && fmt.Sprintf("%v", InfoNota["Status"]) == "200" {
-								InformacionCalificaciones.Corte1.informacion = passNotaInf(InfoNota)
+								InformacionCalificaciones.Corte1.Informacion = helpers.PassNotaInf(InfoNota)
 							} else {
-								InformacionCalificaciones.Corte1.informacion = passNotaEmpty()
+								InformacionCalificaciones.Corte1.Informacion = helpers.PassNotaEmpty()
 							}
 						} else {
-							InformacionCalificaciones.Corte1.informacion = passNotaEmpty()
+							InformacionCalificaciones.Corte1.Informacion = helpers.PassNotaEmpty()
 						}
 
 						if InformacionCalificaciones.Corte2.Existe {
 							var InfoNota map[string]interface{}
 							errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,registro_id:"+InformacionCalificaciones.Corte2.IdRegistroNota+",estudiante_id:"+fmt.Sprintf("%v", id_estudiante), &InfoNota)
 							if errInfoNota == nil && fmt.Sprintf("%v", InfoNota["Status"]) == "200" {
-								InformacionCalificaciones.Corte2.informacion = passNotaInf(InfoNota)
+								InformacionCalificaciones.Corte2.Informacion = helpers.PassNotaInf(InfoNota)
 							} else {
-								InformacionCalificaciones.Corte2.informacion = passNotaEmpty()
+								InformacionCalificaciones.Corte2.Informacion = helpers.PassNotaEmpty()
 							}
 						} else {
-							InformacionCalificaciones.Corte2.informacion = passNotaEmpty()
+							InformacionCalificaciones.Corte2.Informacion = helpers.PassNotaEmpty()
 						}
 
 						if InformacionCalificaciones.Examen.Existe {
 							var InfoNota map[string]interface{}
 							errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,registro_id:"+InformacionCalificaciones.Examen.IdRegistroNota+",estudiante_id:"+fmt.Sprintf("%v", id_estudiante), &InfoNota)
 							if errInfoNota == nil && fmt.Sprintf("%v", InfoNota["Status"]) == "200" {
-								InformacionCalificaciones.Examen.informacion = passNotaInf(InfoNota)
+								InformacionCalificaciones.Examen.Informacion = helpers.PassNotaInf(InfoNota)
 							} else {
-								InformacionCalificaciones.Examen.informacion = passNotaEmpty()
+								InformacionCalificaciones.Examen.Informacion = helpers.PassNotaEmpty()
 							}
 						} else {
-							InformacionCalificaciones.Examen.informacion = passNotaEmpty()
+							InformacionCalificaciones.Examen.Informacion = helpers.PassNotaEmpty()
 						}
 
 						if InformacionCalificaciones.Habilit.Existe {
 							var InfoNota map[string]interface{}
 							errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,registro_id:"+InformacionCalificaciones.Habilit.IdRegistroNota+",estudiante_id:"+fmt.Sprintf("%v", id_estudiante), &InfoNota)
 							if errInfoNota == nil && fmt.Sprintf("%v", InfoNota["Status"]) == "200" {
-								InformacionCalificaciones.Habilit.informacion = passNotaInf(InfoNota)
+								InformacionCalificaciones.Habilit.Informacion = helpers.PassNotaInf(InfoNota)
 							} else {
-								InformacionCalificaciones.Habilit.informacion = passNotaEmpty()
+								InformacionCalificaciones.Habilit.Informacion = helpers.PassNotaEmpty()
 							}
 						} else {
-							InformacionCalificaciones.Habilit.informacion = passNotaEmpty()
+							InformacionCalificaciones.Habilit.Informacion = helpers.PassNotaEmpty()
 						}
 
 						if InformacionCalificaciones.Definitiva.Existe {
 							var InfoNota map[string]interface{}
 							errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,registro_id:"+InformacionCalificaciones.Definitiva.IdRegistroNota+",estudiante_id:"+fmt.Sprintf("%v", id_estudiante), &InfoNota)
 							if errInfoNota == nil && fmt.Sprintf("%v", InfoNota["Status"]) == "200" {
-								InformacionCalificaciones.Definitiva.informacion = passNotaInf(InfoNota)
+								InformacionCalificaciones.Definitiva.Informacion = helpers.PassNotaInf(InfoNota)
 							} else {
-								InformacionCalificaciones.Definitiva.informacion = passNotaEmpty()
+								InformacionCalificaciones.Definitiva.Informacion = helpers.PassNotaEmpty()
 							}
 						} else {
-							InformacionCalificaciones.Definitiva.informacion = passNotaEmpty()
+							InformacionCalificaciones.Definitiva.Informacion = helpers.PassNotaEmpty()
 						}
 
 						datos = append(datos, map[string]interface{}{
@@ -564,12 +450,12 @@ func (c *NotasController) GetCapturaNotas() {
 							"Codigo":     Codigo,
 							"Nombre":     fmt.Sprintf("%v", Nombre1) + " " + fmt.Sprintf("%v", Nombre2),
 							"Apellido":   fmt.Sprintf("%v", Apellido1) + " " + fmt.Sprintf("%v", Apellido2),
-							"Corte1":     InformacionCalificaciones.Corte1.informacion,
-							"Corte2":     InformacionCalificaciones.Corte2.informacion,
-							"Examen":     InformacionCalificaciones.Examen.informacion,
-							"Habilit":    InformacionCalificaciones.Habilit.informacion,
-							"Definitiva": InformacionCalificaciones.Definitiva.informacion,
-							"Acumulado":  calculoAcumuladoNotas(InformacionCalificaciones),
+							"Corte1":     InformacionCalificaciones.Corte1.Informacion,
+							"Corte2":     InformacionCalificaciones.Corte2.Informacion,
+							"Examen":     InformacionCalificaciones.Examen.Informacion,
+							"Habilit":    InformacionCalificaciones.Habilit.Informacion,
+							"Definitiva": InformacionCalificaciones.Definitiva.Informacion,
+							"Acumulado":  helpers.CalculoAcumuladoNotas(InformacionCalificaciones),
 						})
 
 					}
@@ -593,47 +479,31 @@ func (c *NotasController) GetCapturaNotas() {
 					"estado_registro_editable":   estado_registro_editable,
 					"calificaciones_estudiantes": datos,
 				}
-
-				c.Ctx.Output.SetStatus(200)
-				c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
+				return resultado, nil
 
 			} else {
 				logs.Error(errEspaciosAcademicosEstudiantes)
-				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist")
+				return nil, errors.New("error al consultar espacios academicos o la informacion no existe")
 			}
 		} else {
 			logs.Error(errRegistroCalificacion)
-			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist")
+			return nil, errors.New("error al consultar registro de calificaciones o la informacion no existe")
 		}
 	} else {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist")
+		return nil, errors.New("error al cargar informacion de calificaciones o la informacion no existe")
 	}
-
-	c.ServeJSON()
 }
 
-// PutCapturaNotas ...
-// @Title PutCapturaNotas
-// @Description Modificar registro de notas para estudiantes de determinada asignatura
-// @Param   body        body    {}  true        "body Notas Estudiantes"
-// @Success 200 {}
-// @Failure 400 the request contains incorrect syntax
-// @router /notas/asignaturas/estudiantes [put]
-func (c *NotasController) PutCapturaNotas() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
+func PutCapturaNotas(data []byte) (interface{}, error) {
 	var inputData map[string]interface{}
 
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &inputData); err == nil {
+	if err := json.Unmarshal(data, &inputData); err == nil {
 
-		valido := validatePutNotasEstudiantes(inputData)
+		valido := helpers.ValidatePutNotasEstudiantes(inputData)
 
 		if valido {
 
-			if InfoCalificaciones, ok := EstadosRegistroIDs(); ok {
+			if InfoCalificaciones, ok := helpers.EstadosRegistroIDs(); ok {
 
 				espacioAcademico := inputData["Espacio_academico"]
 				periodo := inputData["Periodo"]
@@ -713,7 +583,7 @@ func (c *NotasController) PutCapturaNotas() {
 								}
 							} else if guardarRegistros {
 
-								nota_json = calculoNotasPorCortes(nota_json.(map[string]interface{}))
+								nota_json = helpers.CalculoNotasPorCortes(nota_json.(map[string]interface{}))
 								nota_json.(map[string]interface{})["fallas"] = fallas
 								nota_json.(map[string]interface{})["observacion_nota_id"] = Observ
 
@@ -761,7 +631,7 @@ func (c *NotasController) PutCapturaNotas() {
 								}
 							} else if guardarRegistros {
 
-								nota_json = calculoNotasPorCortes(nota_json.(map[string]interface{}))
+								nota_json = helpers.CalculoNotasPorCortes(nota_json.(map[string]interface{}))
 								nota_json.(map[string]interface{})["fallas"] = fallas
 								nota_json.(map[string]interface{})["observacion_nota_id"] = Observ
 
@@ -809,7 +679,7 @@ func (c *NotasController) PutCapturaNotas() {
 								}
 							} else if guardarRegistros {
 
-								nota_json = calculoNotasPorCortes(nota_json.(map[string]interface{}))
+								nota_json = helpers.CalculoNotasPorCortes(nota_json.(map[string]interface{}))
 								nota_json.(map[string]interface{})["fallas"] = fallas
 								nota_json.(map[string]interface{})["observacion_nota_id"] = Observ
 
@@ -857,7 +727,7 @@ func (c *NotasController) PutCapturaNotas() {
 								}
 							} else if guardarRegistros {
 
-								nota_json = calculoNotasPorCortes(nota_json.(map[string]interface{}))
+								nota_json = helpers.CalculoNotasPorCortes(nota_json.(map[string]interface{}))
 								nota_json.(map[string]interface{})["fallas"] = fallas
 								nota_json.(map[string]interface{})["observacion_nota_id"] = Observ
 
@@ -907,14 +777,14 @@ func (c *NotasController) PutCapturaNotas() {
 							} else if guardarRegistros {
 
 								def := 0.0
-								nota_json = calculoNotasPorCortes(nota_json.(map[string]interface{}))
+								nota_json = helpers.CalculoNotasPorCortes(nota_json.(map[string]interface{}))
 								nota_json.(map[string]interface{})["fallas"] = fallas
 								nota_json.(map[string]interface{})["observacion_nota_id"] = Observ
 								if fmt.Sprintf("%v", ObservCod) == "3" {
 									nota_json.(map[string]interface{})["nota_definitiva"] = 0
 									nota_json.(map[string]interface{})["aprobado"] = false
 								} else {
-									def = calculoDefinitiva(CalificacionEstudiante)
+									def = helpers.CalculoDefinitiva(CalificacionEstudiante)
 									nota_json.(map[string]interface{})["nota_definitiva"] = def
 									if def >= 3 {
 										nota_json.(map[string]interface{})["aprobado"] = true
@@ -956,11 +826,9 @@ func (c *NotasController) PutCapturaNotas() {
 									logs.Error(errNotaEstudianteDel)
 								}
 							}
-							c.Ctx.Output.SetStatus(400)
-							c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
+							return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 						} else {
-							c.Ctx.Output.SetStatus(200)
-							c.Data["json"] = requestresponse.APIResponseDTO(true, 200, crearNotasReporte)
+							return crearNotasReporte, nil
 						}
 					} else if guardarRegistros {
 
@@ -1027,47 +895,29 @@ func (c *NotasController) PutCapturaNotas() {
 									logs.Error(errNotaEstudianteRespaldo)
 								}
 							}
-							c.Ctx.Output.SetStatus(400)
-							c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
+							return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 						} else {
-							c.Ctx.Output.SetStatus(200)
-							c.Data["json"] = requestresponse.APIResponseDTO(true, 200, guardarNotasReporte)
+							return guardarNotasReporte, nil
 						}
 					}
 				} else {
 					logs.Error(errInfoRegistro)
-					c.Ctx.Output.SetStatus(400)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
+					return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 				}
 			} else {
-				c.Ctx.Output.SetStatus(400)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
+				return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 			}
 		} else {
-			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
+			return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 		}
 	} else {
 		logs.Error(err)
-		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
+		return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 	}
-
-	c.ServeJSON()
+	return nil, errors.New("error del servicio PutCapturaNotas: La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 }
 
-// GetEstadosRegistros ...
-// @Title GetEstadosRegistros
-// @Description Listar asignaturas docentes  junto estado registro
-// @Param	id_periodo		path 	int	true		"Id periodo"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /periodos/:id_periodo/estados-registros [get]
-func (c *NotasController) GetEstadosRegistros() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	id_periodo := c.Ctx.Input.Param(":id_periodo")
-
+func GetEstadosRegistros(idPeriodo string) (interface{}, error) {
 	resultados := []interface{}{}
 
 	var EspaciosAcademicosRegistros map[string]interface{}
@@ -1075,8 +925,8 @@ func (c *NotasController) GetEstadosRegistros() {
 
 	var notOk bool = false
 
-	if InfoCalificaciones, ok := EstadosRegistroIDs(); ok {
-		errEspaciosAcademicosRegistros := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico?query=activo:true,periodo_id:"+fmt.Sprintf("%v", id_periodo)+"&limit=0", &EspaciosAcademicosRegistros)
+	if InfoCalificaciones, ok := helpers.EstadosRegistroIDs(); ok {
+		errEspaciosAcademicosRegistros := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico?query=activo:true,periodo_id:"+fmt.Sprintf("%v", idPeriodo)+"&limit=0", &EspaciosAcademicosRegistros)
 		if errEspaciosAcademicosRegistros == nil && fmt.Sprintf("%v", EspaciosAcademicosRegistros["Status"]) == "200" {
 
 			errProyectos := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true&fields=Id,Nombre,NivelFormacionId&limit=0", &proyectos)
@@ -1089,10 +939,11 @@ func (c *NotasController) GetEstadosRegistros() {
 
 					var DocenteInfo []map[string]interface{}
 					errDocenteInfo := request.GetJson("http://"+beego.AppConfig.String("TercerosService")+"datos_identificacion?query=Activo:true,TerceroId:"+fmt.Sprintf("%v", docente_id)+"&sortby=Id&order=desc&limit=1", &DocenteInfo)
+
 					if errDocenteInfo == nil && fmt.Sprintf("%v", DocenteInfo[0]) != "map[]" {
 
 						var InfoRegistro map[string]interface{}
-						errInfoRegistro := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,periodo_id:"+fmt.Sprintf("%v", id_periodo)+",espacio_academico_id:"+fmt.Sprintf("%v", espacioAcademico), &InfoRegistro)
+						errInfoRegistro := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"registro?query=activo:true,periodo_id:"+fmt.Sprintf("%v", idPeriodo)+",espacio_academico_id:"+fmt.Sprintf("%v", espacioAcademico), &InfoRegistro)
 						if errInfoRegistro == nil && fmt.Sprintf("%v", InfoRegistro["Status"]) == "200" {
 
 							for _, registro := range InfoRegistro["Data"].([]interface{}) {
@@ -1117,7 +968,7 @@ func (c *NotasController) GetEstadosRegistros() {
 
 							EstadoRegistro := InfoCalificaciones.Corte1
 
-							proyecto := findIdsbyId(proyectos, fmt.Sprintf("%v", asignatura.(map[string]interface{})["proyecto_academico_id"]))
+							proyecto := helpers.FindIdsbyId(proyectos, fmt.Sprintf("%v", asignatura.(map[string]interface{})["proyecto_academico_id"]))
 
 							if fmt.Sprintf("%v", proyecto) != "map[]" {
 								if InfoCalificaciones.Corte1.Finalizado {
@@ -1151,49 +1002,31 @@ func (c *NotasController) GetEstadosRegistros() {
 							}
 
 						} else {
-							notOk = true
+							return nil, errors.New("error del servicio GetEstadosRegistros: [info registros] La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 						}
 					} else {
-						notOk = true
+						return nil, errors.New("error del servicio GetEstadosRegistros: [docente info] La solicitud contiene un tipo de dato incorrecto o un parámetro inválido" + errDocenteInfo.Error())
 					}
 
 				}
 
 				if !notOk {
-					c.Ctx.Output.SetStatus(200)
-					c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
+					return resultados, nil
 				} else {
-					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
+					return nil, errors.New("error del servicio GetEstadosRegistros: [resultados] La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 				}
 			} else {
-				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
+				return nil, errors.New("error del servicio GetEstadosRegistros: [proyectos] La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 			}
 		} else {
-			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
+			return nil, errors.New("error del servicio GetEstadosRegistros: [espacios academicos] La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 		}
 	} else {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
+		return nil, errors.New("error del servicio GetEstadosRegistros: [info calificaciones] La solicitud contiene un tipo de dato incorrecto o un parámetro inválido")
 	}
-
-	c.ServeJSON()
 }
 
-// GetDatosEstudianteNotas ...
-// @Title GetDatosEstudianteNotas
-// @Description Obtener la informacion de estudiante y notas asignaturas
-// @Param	id_estudiante	path	int		true	"Id estudiante"
-// @Success 200 {}
-// @Failure 404 not found resource
-// @router /notas/estudiantes/:id_estudiante [get]
-func (c *NotasController) GetDatosEstudianteNotas() {
-	defer errorhandler.HandlePanic(&c.Controller)
-
-	id_estudiante := c.Ctx.Input.Param(":id_estudiante")
-
+func GetDatosEstudianteNotas(idEstudiante string) (interface{}, error) {
 	var EstudianteInformacion1 []interface{}
 	var EstudianteInformacion2 []interface{}
 	var proyecto []interface{}
@@ -1206,13 +1039,13 @@ func (c *NotasController) GetDatosEstudianteNotas() {
 
 	var resultados map[string]interface{}
 
-	if InfoNotas, ok := EstadosRegistroIDs(); ok {
+	if InfoNotas, ok := helpers.EstadosRegistroIDs(); ok {
 
-		if id_proyecto, ok := getProyectoFromEspacioAcademico_temporal(id_estudiante); ok {
+		if id_proyecto, ok := helpers.GetProyectoFromEspacioAcademico_temporal(idEstudiante); ok {
 
-			errEstudianteInformacion1 := request.GetJson("http://"+beego.AppConfig.String("TercerosService")+"info_complementaria_tercero?query=Activo:true,InfoComplementariaId.Id:93,TerceroId.Id:"+fmt.Sprintf("%v", id_estudiante), &EstudianteInformacion1)
+			errEstudianteInformacion1 := request.GetJson("http://"+beego.AppConfig.String("TercerosService")+"info_complementaria_tercero?query=Activo:true,InfoComplementariaId.Id:93,TerceroId.Id:"+fmt.Sprintf("%v", idEstudiante), &EstudianteInformacion1)
 			if errEstudianteInformacion1 == nil && fmt.Sprintf("%v", EstudianteInformacion1[0]) != "map[]" {
-				errEstudianteInformacion2 := request.GetJson("http://"+beego.AppConfig.String("TercerosService")+"datos_identificacion?query=Activo:true,TerceroId:"+fmt.Sprintf("%v", id_estudiante)+"&sortby=Id&order=desc&limit=1", &EstudianteInformacion2) //,TipoDocumentoId.Id:3
+				errEstudianteInformacion2 := request.GetJson("http://"+beego.AppConfig.String("TercerosService")+"datos_identificacion?query=Activo:true,TerceroId:"+fmt.Sprintf("%v", idEstudiante)+"&sortby=Id&order=desc&limit=1", &EstudianteInformacion2) //,TipoDocumentoId.Id:3
 				if errEstudianteInformacion2 == nil && fmt.Sprintf("%v", EstudianteInformacion2[0]) != "map[]" {
 					errProyecto := request.GetJson("http://"+beego.AppConfig.String("ProyectoAcademicoService")+"proyecto_academico_institucion?query=Activo:true,Id:"+fmt.Sprintf("%v", id_proyecto), &proyecto)
 					if errProyecto == nil && fmt.Sprintf("%v", proyecto[0]) != "map[]" {
@@ -1220,7 +1053,7 @@ func (c *NotasController) GetDatosEstudianteNotas() {
 						if errCalendario == nil && fmt.Sprintf("%v", calendario[0]) != "map[]" {
 							errPeriodo := request.GetJson("http://"+beego.AppConfig.String("ParametroService")+"periodo/"+fmt.Sprintf("%v", calendario[0].(map[string]interface{})["PeriodoId"]), &periodo)
 							if errPeriodo == nil && fmt.Sprintf("%v", periodo["Status"]) == "200" {
-								errEspaciosAcademicos := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico-estudiantes?query=activo:true,periodo_id:"+fmt.Sprintf("%v", calendario[0].(map[string]interface{})["Id"])+",estudiante_id:"+fmt.Sprintf("%v", id_estudiante)+"&fields=_id&limit=0", &EspaciosAcademicos)
+								errEspaciosAcademicos := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico-estudiantes?query=activo:true,periodo_id:"+fmt.Sprintf("%v", calendario[0].(map[string]interface{})["Id"])+",estudiante_id:"+fmt.Sprintf("%v", idEstudiante)+"&fields=_id&limit=0", &EspaciosAcademicos)
 								if errEspaciosAcademicos == nil && fmt.Sprintf("%v", EspaciosAcademicos["Status"]) == "200" {
 
 									var Asignaturas []interface{}
@@ -1238,7 +1071,7 @@ func (c *NotasController) GetDatosEstudianteNotas() {
 
 									if !notOk {
 
-										errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,estudiante_id:"+fmt.Sprintf("%v", id_estudiante)+"&fields=_id&limit=0", &InfoNota)
+										errInfoNota := request.GetJson("http://"+beego.AppConfig.String("CalificacionesService")+"nota?query=activo:true,estudiante_id:"+fmt.Sprintf("%v", idEstudiante)+"&fields=_id&limit=0", &InfoNota)
 										if errInfoNota == nil && fmt.Sprintf("%v", InfoNota["Status"]) == "200" {
 
 											var NotasDesagrupadas []interface{}
@@ -1264,31 +1097,31 @@ func (c *NotasController) GetDatosEstudianteNotas() {
 														EspacioAcademicoNota := Nota.(map[string]interface{})["registro_id"].(map[string]interface{})["espacio_academico_id"]
 														estadoRegistro := fmt.Sprintf("%v", Nota.(map[string]interface{})["registro_id"].(map[string]interface{})["estado_registro_id"])
 														if EspacioAcademico == EspacioAcademicoNota && estadoRegistro == InfoNotas.Corte1.IdEstado {
-															InfoNotas.Corte1.informacion = passNotaInfV2(Nota.(map[string]interface{}))
+															InfoNotas.Corte1.Informacion = helpers.PassNotaInfV2(Nota.(map[string]interface{}))
 														}
 														if EspacioAcademico == EspacioAcademicoNota && estadoRegistro == InfoNotas.Corte2.IdEstado {
-															InfoNotas.Corte2.informacion = passNotaInfV2(Nota.(map[string]interface{}))
+															InfoNotas.Corte2.Informacion = helpers.PassNotaInfV2(Nota.(map[string]interface{}))
 														}
 														if EspacioAcademico == EspacioAcademicoNota && estadoRegistro == InfoNotas.Examen.IdEstado {
-															InfoNotas.Examen.informacion = passNotaInfV2(Nota.(map[string]interface{}))
+															InfoNotas.Examen.Informacion = helpers.PassNotaInfV2(Nota.(map[string]interface{}))
 														}
 														if EspacioAcademico == EspacioAcademicoNota && estadoRegistro == InfoNotas.Habilit.IdEstado {
-															InfoNotas.Habilit.informacion = passNotaInfV2(Nota.(map[string]interface{}))
+															InfoNotas.Habilit.Informacion = helpers.PassNotaInfV2(Nota.(map[string]interface{}))
 														}
 														if EspacioAcademico == EspacioAcademicoNota && estadoRegistro == InfoNotas.Definitiva.IdEstado {
-															InfoNotas.Definitiva.informacion = passNotaInfV2(Nota.(map[string]interface{}))
+															InfoNotas.Definitiva.Informacion = helpers.PassNotaInfV2(Nota.(map[string]interface{}))
 														}
 													}
 													NotasAsignaturasEstudiante = append(NotasAsignaturasEstudiante, map[string]interface{}{
 														"Grupo":      espAca.(map[string]interface{})["espacio_academico_id"].(map[string]interface{})["grupo"],
 														"Asignatura": espAca.(map[string]interface{})["espacio_academico_id"].(map[string]interface{})["nombre"],
 														"Creditos":   espAca.(map[string]interface{})["espacio_academico_id"].(map[string]interface{})["creditos"],
-														"Corte1":     InfoNotas.Corte1.informacion,
-														"Corte2":     InfoNotas.Corte2.informacion,
-														"Examen":     InfoNotas.Examen.informacion,
-														"Habilit":    InfoNotas.Habilit.informacion,
-														"Definitiva": InfoNotas.Definitiva.informacion,
-														"Acumulado":  calculoAcumuladoNotas(InfoNotas),
+														"Corte1":     InfoNotas.Corte1.Informacion,
+														"Corte2":     InfoNotas.Corte2.Informacion,
+														"Examen":     InfoNotas.Examen.Informacion,
+														"Habilit":    InfoNotas.Habilit.Informacion,
+														"Definitiva": InfoNotas.Definitiva.Informacion,
+														"Acumulado":  helpers.CalculoAcumuladoNotas(InfoNotas),
 													})
 												}
 
@@ -1303,613 +1136,46 @@ func (c *NotasController) GetDatosEstudianteNotas() {
 													"Espacios_academicos": NotasAsignaturasEstudiante,
 												}
 
-												c.Ctx.Output.SetStatus(200)
-												c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
+												return resultados, nil
 
 											} else {
-												c.Ctx.Output.SetStatus(404)
-												c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "notok2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+												return nil, errors.New("notok2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 											}
 										} else {
 											logs.Error(errInfoNota)
-											c.Ctx.Output.SetStatus(404)
-											c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errInfoNota Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+											return nil, errors.New("errInfoNota Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 										}
 									} else {
-										c.Ctx.Output.SetStatus(404)
-										c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "notok1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+										return nil, errors.New("notok1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 									}
 								} else {
 									logs.Error(errEspaciosAcademicos)
-									c.Ctx.Output.SetStatus(404)
-									c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errEspaciosAcademicos Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+									return nil, errors.New("errEspaciosAcademicos Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 								}
 							} else {
 								logs.Error(errPeriodo)
-								c.Ctx.Output.SetStatus(404)
-								c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errPeriodo Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+								return nil, errors.New("errPeriodo Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 							}
 						} else {
 							logs.Error(errCalendario)
-							c.Ctx.Output.SetStatus(404)
-							c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errCalendario Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+							return nil, errors.New("errCalendario Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 						}
 					} else {
 						logs.Error(errProyecto)
-						c.Ctx.Output.SetStatus(404)
-						c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errProyecto Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+						return nil, errors.New("errProyecto Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 					}
 				} else {
 					logs.Error(errEstudianteInformacion2)
-					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errEstudianteInformacion2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+					return nil, errors.New("errEstudianteInformacion2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 				}
 			} else {
 				logs.Error(errEstudianteInformacion1)
-				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errEstudianteInformacion1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+				return nil, errors.New("errEstudianteInformacion1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 			}
 		} else {
-			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "EstadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+			return nil, errors.New("estadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 		}
 	} else {
-		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "EstadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
+		return nil, errors.New("estadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 	}
-
-	c.ServeJSON()
-}
-
-func getProyectoFromEspacioAcademico_temporal(id_estudiante string) (string, bool) {
-	ok := false
-	proyecto_academico_id := "0"
-	var espAcaEst map[string]interface{}
-	erresAcaEst := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico-estudiantes?query=activo:true,estudiante_id:"+fmt.Sprintf("%v", id_estudiante)+"&fields=espacio_academico_id&limit=1", &espAcaEst)
-	if erresAcaEst == nil && fmt.Sprintf("%v", espAcaEst["Status"]) == "200" {
-		id := espAcaEst["Data"].([]interface{})[0].(map[string]interface{})["espacio_academico_id"]
-		var espAca map[string]interface{}
-		erresAca := request.GetJson("http://"+beego.AppConfig.String("EspaciosAcademicosService")+"espacio-academico?query=activo:true,_id:"+fmt.Sprintf("%v", id)+"&fields=proyecto_academico_id&limit=1", &espAca)
-		if erresAca == nil && fmt.Sprintf("%v", espAca["Status"]) == "200" {
-			proyecto_academico_id = fmt.Sprintf("%v", espAca["Data"].([]interface{})[0].(map[string]interface{})["proyecto_academico_id"])
-			ok = true
-		}
-	}
-	return proyecto_academico_id, ok
-}
-
-type TipoEstado struct {
-	IdEstado         string
-	Nombre           string
-	Existe           bool
-	IdRegistroNota   string
-	Finalizado       bool
-	EditExtemporaneo bool
-	informacion      map[string]interface{}
-}
-
-type EstadosRegistro struct {
-	Corte1     TipoEstado
-	Corte2     TipoEstado
-	Examen     TipoEstado
-	Habilit    TipoEstado
-	Definitiva TipoEstado
-}
-
-func EstadosRegistroIDs() (EstadosRegistro, bool) {
-
-	EstadosRegistros := EstadosRegistro{
-		Corte1:     TipoEstado{Nombre: "PRIMER CORTE"},
-		Corte2:     TipoEstado{Nombre: "SEGUNDO CORTE"},
-		Examen:     TipoEstado{Nombre: "EXAMEN FINAL"},
-		Habilit:    TipoEstado{Nombre: "HABILITACIONES"},
-		Definitiva: TipoEstado{Nombre: "DEFINITIVA"},
-	}
-
-	var EstadosRegistroApi map[string]interface{}
-	errEstadosRegistroApi := request.GetJson("http://"+beego.AppConfig.String("ParametroService")+"parametro?query=TipoParametroId:52&fields=Id,Nombre&limit=0", &EstadosRegistroApi)
-	if errEstadosRegistroApi == nil && fmt.Sprintf("%v", EstadosRegistroApi["Status"]) == "200" && fmt.Sprintf("%v", EstadosRegistroApi["Data"]) != "[map[]]" {
-		for _, EstReg := range EstadosRegistroApi["Data"].([]interface{}) {
-			if fmt.Sprintf("%v", EstReg.(map[string]interface{})["Nombre"]) == EstadosRegistros.Corte1.Nombre {
-				EstadosRegistros.Corte1.IdEstado = fmt.Sprintf("%v", EstReg.(map[string]interface{})["Id"])
-				EstadosRegistros.Corte1.Existe = false
-				EstadosRegistros.Corte1.Finalizado = false
-			}
-			if fmt.Sprintf("%v", EstReg.(map[string]interface{})["Nombre"]) == EstadosRegistros.Corte2.Nombre {
-				EstadosRegistros.Corte2.IdEstado = fmt.Sprintf("%v", EstReg.(map[string]interface{})["Id"])
-				EstadosRegistros.Corte2.Existe = false
-				EstadosRegistros.Corte2.Finalizado = false
-			}
-			if fmt.Sprintf("%v", EstReg.(map[string]interface{})["Nombre"]) == EstadosRegistros.Examen.Nombre {
-				EstadosRegistros.Examen.IdEstado = fmt.Sprintf("%v", EstReg.(map[string]interface{})["Id"])
-				EstadosRegistros.Examen.Existe = false
-				EstadosRegistros.Examen.Finalizado = false
-			}
-			if fmt.Sprintf("%v", EstReg.(map[string]interface{})["Nombre"]) == EstadosRegistros.Habilit.Nombre {
-				EstadosRegistros.Habilit.IdEstado = fmt.Sprintf("%v", EstReg.(map[string]interface{})["Id"])
-				EstadosRegistros.Habilit.Existe = false
-				EstadosRegistros.Habilit.Finalizado = false
-			}
-			if fmt.Sprintf("%v", EstReg.(map[string]interface{})["Nombre"]) == EstadosRegistros.Definitiva.Nombre {
-				EstadosRegistros.Definitiva.IdEstado = fmt.Sprintf("%v", EstReg.(map[string]interface{})["Id"])
-				EstadosRegistros.Definitiva.Existe = false
-				EstadosRegistros.Definitiva.Finalizado = false
-			}
-		}
-		return EstadosRegistros, true
-	} else {
-		return EstadosRegistro{}, false
-	}
-}
-
-func calculoNotasPorCortes(Notas map[string]interface{}) map[string]interface{} {
-
-	var calculo = 0.0
-
-	for _, nota := range Notas["valor_nota"].([]interface{}) {
-		perc := nota.(map[string]interface{})["perc"].(float64)
-		value := nota.(map[string]interface{})["value"].(float64)
-		calc := perc / 100.0 * value
-		calculo += calc
-	}
-
-	Notas["nota_definitiva"] = calculo
-
-	return Notas
-}
-
-func calculoDefinitiva(NotasEst interface{}) float64 {
-
-	var calculo = 0.0
-
-	n1 := NotasEst.(map[string]interface{})["Corte1"].(map[string]interface{})["data"].(map[string]interface{})["nota_definitiva"].(float64)
-	n2 := NotasEst.(map[string]interface{})["Corte2"].(map[string]interface{})["data"].(map[string]interface{})["nota_definitiva"].(float64)
-	n3 := NotasEst.(map[string]interface{})["Examen"].(map[string]interface{})["data"].(map[string]interface{})["nota_definitiva"].(float64)
-	n4 := NotasEst.(map[string]interface{})["Habilit"].(map[string]interface{})["data"].(map[string]interface{})["nota_definitiva"].(float64)
-
-	calculo = n1 + n2 + n3 + n4
-
-	Definitiva := math.Round(calculo*10) / 10
-
-	return Definitiva
-}
-
-func calculoAcumuladoNotas(calif EstadosRegistro) float64 {
-
-	calculo := 0.0
-
-	n1 := calif.Corte1.informacion["data"].(map[string]interface{})["nota_definitiva"].(float64)
-	n2 := calif.Corte2.informacion["data"].(map[string]interface{})["nota_definitiva"].(float64)
-	n3 := calif.Examen.informacion["data"].(map[string]interface{})["nota_definitiva"].(float64)
-	n4 := calif.Habilit.informacion["data"].(map[string]interface{})["nota_definitiva"].(float64)
-
-	calculo = n1 + n2 + n3 + n4
-
-	Acumulado := math.Floor(calculo*100) / 100
-
-	return Acumulado
-}
-
-func passNotaInf(N map[string]interface{}) map[string]interface{} {
-	n := map[string]interface{}{
-		"id": N["Data"].([]interface{})[0].(map[string]interface{})["_id"],
-		"data": map[string]interface{}{
-			"valor_nota":          N["Data"].([]interface{})[0].(map[string]interface{})["valor_nota"],
-			"nota_definitiva":     N["Data"].([]interface{})[0].(map[string]interface{})["nota_definitiva"],
-			"fallas":              N["Data"].([]interface{})[0].(map[string]interface{})["fallas"],
-			"observacion_nota_id": N["Data"].([]interface{})[0].(map[string]interface{})["observacion_nota_id"],
-		},
-	}
-	return n
-}
-
-func passNotaInfV2(N map[string]interface{}) map[string]interface{} {
-	n := map[string]interface{}{
-		"data": map[string]interface{}{
-			"valor_nota":          N["valor_nota"],
-			"nota_definitiva":     N["nota_definitiva"],
-			"fallas":              N["fallas"],
-			"observacion_nota_id": N["observacion_nota_id"],
-		},
-	}
-	return n
-}
-
-func passNotaEmpty() map[string]interface{} {
-	n := map[string]interface{}{
-		"id": "",
-		"data": map[string]interface{}{
-			"valor_nota":          map[string]interface{}{},
-			"nota_definitiva":     0,
-			"fallas":              0,
-			"observacion_nota_id": 0,
-		},
-	}
-	return n
-}
-
-func passPorcentajeEmpty(reg string) map[string]interface{} {
-	regI, _ := strconv.Atoi(reg)
-	p := map[string]interface{}{
-		"id":               "",
-		"estadoRegistro":   regI,
-		"fields":           map[string]interface{}{},
-		"editExtemporaneo": false,
-		"finalizado":       false,
-	}
-	return p
-}
-
-func findNamebyId(list []interface{}, id string) string {
-	for _, item := range list {
-		if fmt.Sprintf("%v", item.(map[string]interface{})["Id"]) == id {
-			return fmt.Sprintf("%v", item.(map[string]interface{})["Nombre"])
-		}
-	}
-	return ""
-}
-
-func findIdsbyId(list []interface{}, id string) map[string]interface{} {
-	for _, item := range list {
-		if fmt.Sprintf("%v", item.(map[string]interface{})["Id"]) == id {
-			return item.(map[string]interface{})
-		}
-	}
-	return map[string]interface{}{}
-}
-
-func validatePutPorcentajes(p map[string]interface{}) bool {
-	valid := false
-
-	if Accion, ok := p["Accion"]; ok {
-		if reflect.TypeOf(Accion).Kind() == reflect.String {
-			if Estado_registro, ok := p["Estado_registro"]; ok {
-				if reflect.TypeOf(Estado_registro).Kind() == reflect.Float64 {
-					if PorcentajesNotas, ok := p["PorcentajesNotas"]; ok {
-						if reflect.TypeOf(PorcentajesNotas).Kind() == reflect.Slice {
-							for _, r := range p["PorcentajesNotas"].([]interface{}) {
-								if editExtemporaneo, ok := r.(map[string]interface{})["editExtemporaneo"]; ok {
-									if reflect.TypeOf(editExtemporaneo).Kind() == reflect.Bool {
-										if estadoRegistro, ok := r.(map[string]interface{})["estadoRegistro"]; ok {
-											if reflect.TypeOf(estadoRegistro).Kind() == reflect.Float64 {
-												if fields, ok := r.(map[string]interface{})["fields"]; ok {
-													if reflect.TypeOf(fields).Kind() == reflect.Map {
-														if finalizado, ok := r.(map[string]interface{})["finalizado"]; ok {
-															if reflect.TypeOf(finalizado).Kind() == reflect.Bool {
-																if id, ok := r.(map[string]interface{})["id"]; ok {
-																	if reflect.TypeOf(id).Kind() == reflect.String {
-																		if editporTiempo, ok := r.(map[string]interface{})["editporTiempo"]; ok {
-																			if reflect.TypeOf(editporTiempo).Kind() == reflect.Bool {
-																				valid = true
-																			} else {
-																				valid = false
-																				break
-																			}
-																		} else {
-																			valid = false
-																			break
-																		}
-																	} else {
-																		valid = false
-																		break
-																	}
-																} else {
-																	valid = false
-																	break
-																}
-															} else {
-																valid = false
-																break
-															}
-														} else {
-															valid = false
-															break
-														}
-													} else {
-														valid = false
-														break
-													}
-												} else {
-													valid = false
-													break
-												}
-											} else {
-												valid = false
-												break
-											}
-										} else {
-											valid = false
-											break
-										}
-									} else {
-										valid = false
-										break
-									}
-								} else {
-									valid = false
-									break
-								}
-							}
-						} else {
-							valid = false
-						}
-					} else {
-						valid = false
-					}
-				} else {
-					valid = false
-				}
-			} else {
-				valid = false
-			}
-			if Accion == "Crear" {
-				if Info, ok := p["Info"]; ok {
-					if reflect.TypeOf(Info).Kind() == reflect.Map {
-						if nombre, ok := Info.(map[string]interface{})["nombre"]; ok {
-							if reflect.TypeOf(nombre).Kind() == reflect.String {
-								if codigo, ok := Info.(map[string]interface{})["codigo"]; ok {
-									if reflect.TypeOf(codigo).Kind() == reflect.String {
-										if periodo, ok := Info.(map[string]interface{})["periodo"]; ok {
-											if reflect.TypeOf(periodo).Kind() == reflect.Float64 {
-												if nivel, ok := Info.(map[string]interface{})["nivel"]; ok {
-													if reflect.TypeOf(nivel).Kind() == reflect.Float64 {
-														if espacio_academico, ok := Info.(map[string]interface{})["espacio_academico"]; ok {
-															if reflect.TypeOf(espacio_academico).Kind() == reflect.String {
-																valid = true
-															} else {
-																valid = false
-															}
-														} else {
-															valid = false
-														}
-													} else {
-														valid = false
-													}
-												} else {
-													valid = false
-												}
-											} else {
-												valid = false
-											}
-										} else {
-											valid = false
-										}
-									} else {
-										valid = false
-									}
-								} else {
-									valid = false
-								}
-							} else {
-								valid = false
-							}
-						} else {
-							valid = false
-						}
-					} else {
-						valid = false
-					}
-				} else {
-					valid = false
-				}
-			}
-		} else {
-			valid = false
-		}
-	} else {
-		valid = false
-	}
-
-	return valid
-}
-
-func validatePutNotasEstudiantes(n map[string]interface{}) bool {
-	valid := false
-
-	if Accion, ok := n["Accion"]; ok {
-		if reflect.TypeOf(Accion).Kind() == reflect.String {
-			if Estado_registro, ok := n["Estado_registro"]; ok {
-				if reflect.TypeOf(Estado_registro).Kind() == reflect.Float64 {
-					if Espacio_academico, ok := n["Espacio_academico"]; ok {
-						if reflect.TypeOf(Espacio_academico).Kind() == reflect.String {
-							if Nombre, ok := n["Nombre"]; ok {
-								if reflect.TypeOf(Nombre).Kind() == reflect.String {
-									if Periodo, ok := n["Periodo"]; ok {
-										if reflect.TypeOf(Periodo).Kind() == reflect.Float64 {
-											if CalificacionesEstudiantes, ok := n["CalificacionesEstudiantes"]; ok {
-												if reflect.TypeOf(CalificacionesEstudiantes).Kind() == reflect.Slice {
-													for _, e := range CalificacionesEstudiantes.([]interface{}) {
-														if Id, ok := e.(map[string]interface{})["Id"]; ok {
-															if reflect.TypeOf(Id).Kind() == reflect.Float64 {
-																if Corte1, ok := e.(map[string]interface{})["Corte1"]; ok {
-																	if reflect.TypeOf(Corte1).Kind() == reflect.Map {
-																		if id, ok := Corte1.(map[string]interface{})["id"]; ok {
-																			if reflect.TypeOf(id).Kind() == reflect.String {
-																				if data, ok := Corte1.(map[string]interface{})["data"]; ok {
-																					if reflect.TypeOf(data).Kind() == reflect.Map {
-																						valid = true
-																					} else {
-																						valid = false
-																						break
-																					}
-																				} else {
-																					valid = false
-																					break
-																				}
-																			} else {
-																				valid = false
-																				break
-																			}
-																		} else {
-																			valid = false
-																			break
-																		}
-																	} else {
-																		valid = false
-																		break
-																	}
-																}
-																if Corte2, ok := e.(map[string]interface{})["Corte2"]; ok {
-																	if reflect.TypeOf(Corte2).Kind() == reflect.Map {
-																		if id, ok := Corte2.(map[string]interface{})["id"]; ok {
-																			if reflect.TypeOf(id).Kind() == reflect.String {
-																				if data, ok := Corte2.(map[string]interface{})["data"]; ok {
-																					if reflect.TypeOf(data).Kind() == reflect.Map {
-																						valid = true
-																					} else {
-																						valid = false
-																						break
-																					}
-																				} else {
-																					valid = false
-																					break
-																				}
-																			} else {
-																				valid = false
-																				break
-																			}
-																		} else {
-																			valid = false
-																			break
-																		}
-																	} else {
-																		valid = false
-																		break
-																	}
-																}
-
-																if Examen, ok := e.(map[string]interface{})["Examen"]; ok {
-																	if reflect.TypeOf(Examen).Kind() == reflect.Map {
-																		if id, ok := Examen.(map[string]interface{})["id"]; ok {
-																			if reflect.TypeOf(id).Kind() == reflect.String {
-																				if data, ok := Examen.(map[string]interface{})["data"]; ok {
-																					if reflect.TypeOf(data).Kind() == reflect.Map {
-																						valid = true
-																					} else {
-																						valid = false
-																						break
-																					}
-																				} else {
-																					valid = false
-																					break
-																				}
-																			} else {
-																				valid = false
-																				break
-																			}
-																		} else {
-																			valid = false
-																			break
-																		}
-																	} else {
-																		valid = false
-																		break
-																	}
-																}
-
-																if Habilit, ok := e.(map[string]interface{})["Habilit"]; ok {
-																	if reflect.TypeOf(Habilit).Kind() == reflect.Map {
-																		if id, ok := Habilit.(map[string]interface{})["id"]; ok {
-																			if reflect.TypeOf(id).Kind() == reflect.String {
-																				if data, ok := Habilit.(map[string]interface{})["data"]; ok {
-																					if reflect.TypeOf(data).Kind() == reflect.Map {
-																						valid = true
-																					} else {
-																						valid = false
-																						break
-																					}
-																				} else {
-																					valid = false
-																					break
-																				}
-																			} else {
-																				valid = false
-																				break
-																			}
-																		} else {
-																			valid = false
-																			break
-																		}
-																	} else {
-																		valid = false
-																		break
-																	}
-																}
-
-																if Definitiva, ok := e.(map[string]interface{})["Definitiva"]; ok {
-																	if reflect.TypeOf(Definitiva).Kind() == reflect.Map {
-																		if id, ok := Definitiva.(map[string]interface{})["id"]; ok {
-																			if reflect.TypeOf(id).Kind() == reflect.String {
-																				if data, ok := Definitiva.(map[string]interface{})["data"]; ok {
-																					if reflect.TypeOf(data).Kind() == reflect.Map {
-																						valid = true
-																					} else {
-																						valid = false
-																						break
-																					}
-																				} else {
-																					valid = false
-																					break
-																				}
-																			} else {
-																				valid = false
-																				break
-																			}
-																		} else {
-																			valid = false
-																			break
-																		}
-																	} else {
-																		valid = false
-																		break
-																	}
-																}
-
-															} else {
-																valid = false
-																break
-															}
-														} else {
-															valid = false
-															break
-														}
-													}
-												} else {
-													valid = false
-												}
-											} else {
-												valid = false
-											}
-										} else {
-											valid = false
-										}
-									} else {
-										valid = false
-									}
-								} else {
-									valid = false
-								}
-							} else {
-								valid = false
-							}
-						} else {
-							valid = false
-						}
-					} else {
-						valid = false
-					}
-				} else {
-					valid = false
-				}
-			} else {
-				valid = false
-			}
-		} else {
-			valid = false
-		}
-	} else {
-		valid = false
-	}
-
-	return valid
 }
