@@ -3,12 +3,15 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 	"math"
 	"reflect"
-	request "sga_mid_notas/models"
 	"strconv"
+
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+	request "github.com/udistrital/sga_mid_notas/models"
+	"github.com/udistrital/utils_oas/errorhandler"
+	"github.com/udistrital/utils_oas/requestresponse"
 )
 
 // NotasController operations for Notas
@@ -35,8 +38,10 @@ func (c *NotasController) URLMapping() {
 // @Param	id_docente		path 	int	true		"Id docente"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /EspaciosAcademicos/:id_docente [get]
+// @router /docentes/:id_docente/espacios-academicos [get]
 func (c *NotasController) GetEspaciosAcademicosDocente() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
 	id_docente := c.Ctx.Input.Param(":id_docente")
 
 	resultados := []interface{}{}
@@ -84,30 +89,30 @@ func (c *NotasController) GetEspaciosAcademicosDocente() {
 
 					if fmt.Sprintf("%v", resultados) != "[]" {
 						c.Ctx.Output.SetStatus(200)
-						c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": resultados}
+						c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
 					} else {
 						c.Ctx.Output.SetStatus(404)
-						c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEspaciosAcademicosDocente: The request contains an incorrect parameter or no record exist", "Data": nil}
+						c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 					}
 				} else {
 					logs.Error(errPeriodos)
 					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEspaciosAcademicosDocente: The request contains an incorrect parameter or no record exist", "Data": nil}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 				}
 			} else {
 				logs.Error(errCalendario)
 				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEspaciosAcademicosDocente: The request contains an incorrect parameter or no record exist", "Data": nil}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 			}
 		} else {
 			logs.Error(errProyectos)
 			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEspaciosAcademicosDocente: The request contains an incorrect parameter or no record exist", "Data": nil}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 		}
 	} else {
 		logs.Error(errEspaciosAcademicosRegistros)
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEspaciosAcademicosDocente: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 	}
 
 	c.ServeJSON()
@@ -119,8 +124,10 @@ func (c *NotasController) GetEspaciosAcademicosDocente() {
 // @Param	id_asignatura		path 	string	true		"Id asignatura"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /ModificacionExtemporanea/:id_asignatura [get]
+// @router /asignaturas/:id_asignatura/modificacion-extemporanea [get]
 func (c *NotasController) GetModificacionExtemporanea() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
 	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
 
 	var RegistroAsignatura map[string]interface{}
@@ -128,12 +135,11 @@ func (c *NotasController) GetModificacionExtemporanea() {
 	if errRegistroAsignatura == nil && fmt.Sprintf("%v", RegistroAsignatura["Status"]) == "200" {
 
 		c.Ctx.Output.SetStatus(200)
-		c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": RegistroAsignatura["Data"]}
-
+		c.Data["json"] = requestresponse.APIResponseDTO(true, 200, RegistroAsignatura["Data"])
 	} else {
 		logs.Error(errRegistroAsignatura)
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetModificacionExtemporanea: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 	}
 
 	c.ServeJSON()
@@ -146,8 +152,10 @@ func (c *NotasController) GetModificacionExtemporanea() {
 // @Param	id_asignatura		path 	string	true		"Id asignatura"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /InfoDocenteAsignatura/:id_asignatura [get]
+// @router /asignaturas/:id_asignatura/info-docente [get]
 func (c *NotasController) GetDatosDocenteAsignatura() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
 	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
 
 	resultado := []interface{}{}
@@ -184,33 +192,32 @@ func (c *NotasController) GetDatosDocenteAsignatura() {
 							"Creditos":       EspacioAcademicoRegistro["Data"].(map[string]interface{})["creditos"],
 							"Periodo":        periodo["Data"].(map[string]interface{})["Nombre"],
 						})
-
 						c.Ctx.Output.SetStatus(200)
-						c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": resultado}
+						c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 					} else {
 						logs.Error(errPeriodo)
 						c.Ctx.Output.SetStatus(404)
-						c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetDatosDocenteAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+						c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 					}
 				} else {
 					logs.Error(errCalendario)
 					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetDatosDocenteAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 				}
 			} else {
 				logs.Error(errProyecto)
 				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetDatosDocenteAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 			}
 		} else {
 			logs.Error(errDocenteInfo)
 			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetDatosDocenteAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 		}
 	} else {
 		logs.Error(errEspacioAcademicoRegistro)
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetDatosDocenteAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 	}
 
 	c.ServeJSON()
@@ -223,8 +230,10 @@ func (c *NotasController) GetDatosDocenteAsignatura() {
 // @Param	id_periodo		path 	int	true		"Id periodo"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /PorcentajeAsignatura/:id_asignatura/:id_periodo [get]
+// @router /asignaturas/:id_asignatura/periodos/:id_periodo/porcentajes [get]
 func (c *NotasController) GetPorcentajesAsignatura() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
 	id_asignatura := c.Ctx.Input.Param(":id_asignatura")
 	id_periodo := c.Ctx.Input.Param(":id_periodo")
 
@@ -285,16 +294,16 @@ func (c *NotasController) GetPorcentajesAsignatura() {
 			}
 
 			c.Ctx.Output.SetStatus(200)
-			c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": resultados}
+			c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
 
 		} else {
 			logs.Error(errRegistroAsignatura)
 			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetPorcentajesAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 		}
 	} else {
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetPorcentajesAsignatura: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil)
 	}
 
 	c.ServeJSON()
@@ -306,8 +315,9 @@ func (c *NotasController) GetPorcentajesAsignatura() {
 // @Param   body        body    {}  true        "body Modificar registro Asignatura content"
 // @Success 200 {}
 // @Failure 400 the request contains incorrect syntax
-// @router /PorcentajeAsignatura [put]
+// @router /asignaturas/porcentajes [put]
 func (c *NotasController) PutPorcentajesAsignatura() {
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	var inputData map[string]interface{}
 
@@ -390,31 +400,31 @@ func (c *NotasController) PutPorcentajesAsignatura() {
 						}
 					}
 					c.Ctx.Output.SetStatus(400)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter"}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil)
 				} else {
 					c.Ctx.Output.SetStatus(200)
-					c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": crearRegistrosReporte}
+					c.Data["json"] = requestresponse.APIResponseDTO(true, 200, crearRegistrosReporte)
 				}
 			} else if guardarRegistros {
 				if guardarSalioMal {
 					c.Ctx.Output.SetStatus(400)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter"}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
 				} else {
 					c.Ctx.Output.SetStatus(200)
-					c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": guardarRegistroReporte}
+					c.Data["json"] = requestresponse.APIResponseDTO(true, 200, guardarRegistroReporte)
 				}
 			} else {
 				c.Ctx.Output.SetStatus(400)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter"}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
 			}
 		} else {
 			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter"}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
 		}
 	} else {
 		logs.Error(err)
 		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter"}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutPorcentajesAsignatura: The request contains an incorrect data type or an invalid parameter")
 	}
 
 	c.ServeJSON()
@@ -427,8 +437,10 @@ func (c *NotasController) PutPorcentajesAsignatura() {
 // @Param	id_periodo				path	int		true		"Id periodo"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /CapturaNotas/:id_asignatura/:id_periodo [get]
+// @router /notas/asignaturas/:id_asignatura/periodos/:id_periodo/estudiantes [get]
 func (c *NotasController) GetCapturaNotas() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
 	id_espacio_academico := c.Ctx.Input.Param(":id_asignatura")
 	id_periodo := c.Ctx.Input.Param(":id_periodo")
 
@@ -583,21 +595,21 @@ func (c *NotasController) GetCapturaNotas() {
 				}
 
 				c.Ctx.Output.SetStatus(200)
-				c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": resultado}
+				c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultado)
 
 			} else {
 				logs.Error(errEspaciosAcademicosEstudiantes)
 				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist")
 			}
 		} else {
 			logs.Error(errRegistroCalificacion)
 			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist")
 		}
 	} else {
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service GetCapturaNotas: The request contains an incorrect parameter or no record exist")
 	}
 
 	c.ServeJSON()
@@ -609,8 +621,9 @@ func (c *NotasController) GetCapturaNotas() {
 // @Param   body        body    {}  true        "body Notas Estudiantes"
 // @Success 200 {}
 // @Failure 400 the request contains incorrect syntax
-// @router /CapturaNotas [put]
+// @router /notas/asignaturas/estudiantes [put]
 func (c *NotasController) PutCapturaNotas() {
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	var inputData map[string]interface{}
 
@@ -944,10 +957,10 @@ func (c *NotasController) PutCapturaNotas() {
 								}
 							}
 							c.Ctx.Output.SetStatus(400)
-							c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter"}
+							c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
 						} else {
 							c.Ctx.Output.SetStatus(200)
-							c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": crearNotasReporte}
+							c.Data["json"] = requestresponse.APIResponseDTO(true, 200, crearNotasReporte)
 						}
 					} else if guardarRegistros {
 
@@ -1015,29 +1028,29 @@ func (c *NotasController) PutCapturaNotas() {
 								}
 							}
 							c.Ctx.Output.SetStatus(400)
-							c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter"}
+							c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
 						} else {
 							c.Ctx.Output.SetStatus(200)
-							c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": guardarNotasReporte}
+							c.Data["json"] = requestresponse.APIResponseDTO(true, 200, guardarNotasReporte)
 						}
 					}
 				} else {
 					logs.Error(errInfoRegistro)
 					c.Ctx.Output.SetStatus(400)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter"}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
 				}
 			} else {
 				c.Ctx.Output.SetStatus(400)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter"}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
 			}
 		} else {
 			c.Ctx.Output.SetStatus(400)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter"}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
 		}
 	} else {
 		logs.Error(err)
 		c.Ctx.Output.SetStatus(400)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "400", "Message": "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter"}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "Error service PutCapturaNotas: The request contains an incorrect data type or an invalid parameter")
 	}
 
 	c.ServeJSON()
@@ -1049,8 +1062,9 @@ func (c *NotasController) PutCapturaNotas() {
 // @Param	id_periodo		path 	int	true		"Id periodo"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /EstadosRegistros/:id_periodo [get]
+// @router /periodos/:id_periodo/estados-registros [get]
 func (c *NotasController) GetEstadosRegistros() {
+	defer errorhandler.HandlePanic(&c.Controller)
 
 	id_periodo := c.Ctx.Input.Param(":id_periodo")
 
@@ -1147,22 +1161,22 @@ func (c *NotasController) GetEstadosRegistros() {
 
 				if !notOk {
 					c.Ctx.Output.SetStatus(200)
-					c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": resultados}
+					c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
 				} else {
 					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist", "Data": nil}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
 				}
 			} else {
 				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist", "Data": nil}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
 			}
 		} else {
 			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist", "Data": nil}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
 		}
 	} else {
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 400, nil, "Error service GetEstadosRegistros: The request contains an incorrect parameter or no record exist")
 	}
 
 	c.ServeJSON()
@@ -1174,8 +1188,10 @@ func (c *NotasController) GetEstadosRegistros() {
 // @Param	id_estudiante	path	int		true	"Id estudiante"
 // @Success 200 {}
 // @Failure 404 not found resource
-// @router /InfoEstudianteNotas/:id_estudiante [get]
+// @router /notas/estudiantes/:id_estudiante [get]
 func (c *NotasController) GetDatosEstudianteNotas() {
+	defer errorhandler.HandlePanic(&c.Controller)
+
 	id_estudiante := c.Ctx.Input.Param(":id_estudiante")
 
 	var EstudianteInformacion1 []interface{}
@@ -1288,58 +1304,58 @@ func (c *NotasController) GetDatosEstudianteNotas() {
 												}
 
 												c.Ctx.Output.SetStatus(200)
-												c.Data["json"] = map[string]interface{}{"Success": true, "Status": "200", "Message": "Query successful", "Data": resultados}
+												c.Data["json"] = requestresponse.APIResponseDTO(true, 200, resultados)
 
 											} else {
 												c.Ctx.Output.SetStatus(404)
-												c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "notok2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+												c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "notok2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 											}
 										} else {
 											logs.Error(errInfoNota)
 											c.Ctx.Output.SetStatus(404)
-											c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errInfoNota Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+											c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errInfoNota Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 										}
 									} else {
 										c.Ctx.Output.SetStatus(404)
-										c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "notok1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+										c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "notok1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 									}
 								} else {
 									logs.Error(errEspaciosAcademicos)
 									c.Ctx.Output.SetStatus(404)
-									c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errEspaciosAcademicos Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+									c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errEspaciosAcademicos Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 								}
 							} else {
 								logs.Error(errPeriodo)
 								c.Ctx.Output.SetStatus(404)
-								c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errPeriodo Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+								c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errPeriodo Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 							}
 						} else {
 							logs.Error(errCalendario)
 							c.Ctx.Output.SetStatus(404)
-							c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errCalendario Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+							c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errCalendario Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 						}
 					} else {
 						logs.Error(errProyecto)
 						c.Ctx.Output.SetStatus(404)
-						c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errProyecto Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+						c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errProyecto Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 					}
 				} else {
 					logs.Error(errEstudianteInformacion2)
 					c.Ctx.Output.SetStatus(404)
-					c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errEstudianteInformacion2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+					c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errEstudianteInformacion2 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 				}
 			} else {
 				logs.Error(errEstudianteInformacion1)
 				c.Ctx.Output.SetStatus(404)
-				c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "errEstudianteInformacion1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+				c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "errEstudianteInformacion1 Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 			}
 		} else {
 			c.Ctx.Output.SetStatus(404)
-			c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "EstadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+			c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "EstadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 		}
 	} else {
 		c.Ctx.Output.SetStatus(404)
-		c.Data["json"] = map[string]interface{}{"Success": false, "Status": "404", "Message": "EstadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist", "Data": nil}
+		c.Data["json"] = requestresponse.APIResponseDTO(false, 404, nil, "EstadosRegistroIDs Error service GetDatosEstudianteNotas: The request contains an incorrect parameter or no record exist")
 	}
 
 	c.ServeJSON()
@@ -1541,21 +1557,6 @@ func findIdsbyId(list []interface{}, id string) map[string]interface{} {
 	}
 	return map[string]interface{}{}
 }
-
-/* func findBy(list []interface{}, key string, value string) []map[string]interface{} {
-	results := []map[string]interface{}{}
-	for _, item := range list {
-		if fmt.Sprintf("%v", item.(map[string]interface{})[key]) == value {
-			results = append(results, item.(map[string]interface{}))
-		}
-	}
-	return results
-}
-
-func prettyjson(jsonInterface map[string]interface{}) {
-	jsondata, _ := json.MarshalIndent(jsonInterface, "", "\t")
-	fmt.Println(string(jsondata))
-} */
 
 func validatePutPorcentajes(p map[string]interface{}) bool {
 	valid := false

@@ -1,7 +1,8 @@
 lastupdate.tmp
 .vscode/
 .idea/
-sga_mid
+sga_mid_notas
+sga_mid_notas.exe
 main
 .scannerwork/
 swagger/*.png
@@ -9,7 +10,6 @@ swagger/*.html
 swagger/*.js
 swagger/*.map
 swagger/*.css
-swagger/*.yml
 swagger/css/
 swagger/fonts/
 swagger/images/

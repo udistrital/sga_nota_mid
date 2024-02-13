@@ -15,10 +15,151 @@
     },
     "basePath": "/v1",
     "paths": {
-        "/notas/CapturaNotas": {
+        "/asignaturas/porcentajes": {
             "put": {
                 "tags": [
-                    "notas"
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
+                ],
+                "description": "Modificar los porcentajes de la asignatura solicitada",
+                "operationId": "NotasController.PutPorcentajesAsignatura",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "body Modificar registro Asignatura content",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/{}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "400": {
+                        "description": "the request contains incorrect syntax"
+                    }
+                }
+            }
+        },
+        "/asignaturas/{id_asignatura}/info-docente": {
+            "get": {
+                "tags": [
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
+                ],
+                "description": "Obtener la informacion de docente y asingnatura solicitada",
+                "operationId": "NotasController.GetDatosDocenteAsignatura",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/asignaturas/{id_asignatura}/modificacion-extemporanea": {
+            "get": {
+                "tags": [
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
+                ],
+                "description": "Chequear si hay modificacion extemporanea para la asignatura",
+                "operationId": "NotasController.GetModificacionExtemporanea",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/asignaturas/{id_asignatura}/periodos/{id_periodo}/porcentajes": {
+            "get": {
+                "tags": [
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
+                ],
+                "description": "Obtener los porcentajes de la asignatura solicitada",
+                "operationId": "NotasController.GetPorcentajesAsignatura",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_asignatura",
+                        "description": "Id asignatura",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "id_periodo",
+                        "description": "Id periodo",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/docentes/{id_docente}/espacios-academicos": {
+            "get": {
+                "tags": [
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
+                ],
+                "description": "Listar la carga academica relacionada a determinado docente",
+                "operationId": "NotasController.GetEspaciosAcademicosDocente",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id_docente",
+                        "description": "Id docente",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{}"
+                    },
+                    "404": {
+                        "description": "not found resource"
+                    }
+                }
+            }
+        },
+        "/notas/asignaturas/estudiantes": {
+            "put": {
+                "tags": [
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
                 ],
                 "description": "Modificar registro de notas para estudiantes de determinada asignatura",
                 "operationId": "NotasController.PutCapturaNotas",
@@ -43,10 +184,10 @@
                 }
             }
         },
-        "/notas/CapturaNotas/{id_asignatura}/{id_periodo}": {
+        "/notas/asignaturas/{id_asignatura}/periodos/{id_periodo}/estudiantes": {
             "get": {
                 "tags": [
-                    "notas"
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
                 ],
                 "description": "Obtener lista de estudiantes con los registros de notas para determinada asignatura",
                 "operationId": "NotasController.GetCapturaNotas",
@@ -77,90 +218,10 @@
                 }
             }
         },
-        "/notas/EspaciosAcademicos/{id_docente}": {
+        "/notas/estudiantes/{id_estudiante}": {
             "get": {
                 "tags": [
-                    "notas"
-                ],
-                "description": "Listar la carga academica relacionada a determinado docente",
-                "operationId": "NotasController.GetEspaciosAcademicosDocente",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id_docente",
-                        "description": "Id docente",
-                        "required": true,
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{}"
-                    },
-                    "404": {
-                        "description": "not found resource"
-                    }
-                }
-            }
-        },
-        "/notas/EstadosRegistros/{id_periodo}": {
-            "get": {
-                "tags": [
-                    "notas"
-                ],
-                "description": "Listar asignaturas docentes  junto estado registro",
-                "operationId": "NotasController.GetEstadosRegistros",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id_periodo",
-                        "description": "Id periodo",
-                        "required": true,
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{}"
-                    },
-                    "404": {
-                        "description": "not found resource"
-                    }
-                }
-            }
-        },
-        "/notas/InfoDocenteAsignatura/{id_asignatura}": {
-            "get": {
-                "tags": [
-                    "notas"
-                ],
-                "description": "Obtener la informacion de docente y asingnatura solicitada",
-                "operationId": "NotasController.GetDatosDocenteAsignatura",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id_asignatura",
-                        "description": "Id asignatura",
-                        "required": true,
-                        "type": "string"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{}"
-                    },
-                    "404": {
-                        "description": "not found resource"
-                    }
-                }
-            }
-        },
-        "/notas/InfoEstudianteNotas/{id_estudiante}": {
-            "get": {
-                "tags": [
-                    "notas"
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
                 ],
                 "description": "Obtener la informacion de estudiante y notas asignaturas",
                 "operationId": "NotasController.GetDatosEstudianteNotas",
@@ -184,75 +245,14 @@
                 }
             }
         },
-        "/notas/ModificacionExtemporanea/{id_asignatura}": {
+        "/periodos/{id_periodo}/estados-registros": {
             "get": {
                 "tags": [
-                    "notas"
+                    "github.com/udistrital/sga_mid_notas/controllersNotasController"
                 ],
-                "description": "Chequear si hay modificacion extemporanea para la asignatura",
-                "operationId": "NotasController.GetModificacionExtemporanea",
+                "description": "Listar asignaturas docentes  junto estado registro",
+                "operationId": "NotasController.GetEstadosRegistros",
                 "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id_asignatura",
-                        "description": "Id asignatura",
-                        "required": true,
-                        "type": "string"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{}"
-                    },
-                    "404": {
-                        "description": "not found resource"
-                    }
-                }
-            }
-        },
-        "/notas/PorcentajeAsignatura": {
-            "put": {
-                "tags": [
-                    "notas"
-                ],
-                "description": "Modificar los porcentajes de la asignatura solicitada",
-                "operationId": "NotasController.PutPorcentajesAsignatura",
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "body",
-                        "description": "body Modificar registro Asignatura content",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/{}"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "{}"
-                    },
-                    "400": {
-                        "description": "the request contains incorrect syntax"
-                    }
-                }
-            }
-        },
-        "/notas/PorcentajeAsignatura/{id_asignatura}/{id_periodo}": {
-            "get": {
-                "tags": [
-                    "notas"
-                ],
-                "description": "Obtener los porcentajes de la asignatura solicitada",
-                "operationId": "NotasController.GetPorcentajesAsignatura",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id_asignatura",
-                        "description": "Id asignatura",
-                        "required": true,
-                        "type": "string"
-                    },
                     {
                         "in": "path",
                         "name": "id_periodo",
@@ -281,7 +281,7 @@
     },
     "tags": [
         {
-            "name": "notas",
+            "name": "github.com/udistrital/sga_mid_notas/controllersNotasController",
             "description": "NotasController operations for Notas\n"
         }
     ]
