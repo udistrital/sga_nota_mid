@@ -7,7 +7,7 @@ import (
 
 func init() {
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetDatosDocenteAsignatura",
             Router: "/asignaturas/:id_asignatura/info-docente",
@@ -16,7 +16,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetModificacionExtemporanea",
             Router: "/asignaturas/:id_asignatura/modificacion-extemporanea",
@@ -25,7 +25,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetPorcentajesAsignatura",
             Router: "/asignaturas/:id_asignatura/periodos/:id_periodo/porcentajes",
@@ -34,7 +34,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "PutPorcentajesAsignatura",
             Router: "/asignaturas/porcentajes",
@@ -43,7 +43,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetEspaciosAcademicosDocente",
             Router: "/docentes/:id_docente/espacios-academicos",
@@ -52,7 +52,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetCapturaNotas",
             Router: "/notas/asignaturas/:id_asignatura/periodos/:id_periodo/estudiantes",
@@ -61,7 +61,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "PutCapturaNotas",
             Router: "/notas/asignaturas/estudiantes",
@@ -70,7 +70,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetDatosEstudianteNotas",
             Router: "/notas/estudiantes/:id_estudiante",
@@ -79,7 +79,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_mid_notas/controllers:NotasController"],
+    beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"] = append(beego.GlobalControllerRouter["github.com/udistrital/sga_nota_mid/controllers:NotasController"],
         beego.ControllerComments{
             Method: "GetEstadosRegistros",
             Router: "/periodos/:id_periodo/estados-registros",

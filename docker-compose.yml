@@ -12,7 +12,7 @@ services:
       - custom.env
       - .env
     ports:
-      - "${SGA_MID_NOTAS_HTTP_PORT}:${SGA_MID_NOTAS_HTTP_PORT}"
+      - "${SGA_NOTA_MID_HTTP_PORT}:${SGA_NOTA_MID_HTTP_PORT}"
     command: sh -c 'cd ${API_BASE_DIR}/${API_NAME};go get -v ./...; bee run --downdoc=true --gendoc=true'
     networks:
       - back_end
