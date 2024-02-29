@@ -8,7 +8,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/prometheus/common/log"
-	"github.com/udistrital/sga_mid_notas/helpers"
+	"github.com/udistrital/sga_nota_mid/helpers"
 	"github.com/udistrital/utils_oas/request"
 )
 
