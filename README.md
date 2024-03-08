@@ -11,6 +11,7 @@ académicos y terceros con los endpoints requeridos para la gestión de la infor
 * [Docker](https://docs.docker.com/engine/install/ubuntu/)
 * [Docker Compose](https://docs.docker.com/compose/)
 
+
 ### Variables de Entorno
 ```shell
 CALIFICACIONES_SERVICE: [Servicio API CALIFICACIONES]
